@@ -31,33 +31,113 @@ public class IRoadTrip {
     	nametoId = new HashMap<String, String>();
     	
     }
+    
+    class Node {
+    	//Node class used for findPath
+        String country;
+        int distance;
 
-    public int getDistance (String country1, String country2) {
-    	//only accounts for direct capital to capital distance
-        return -1;
+        public Node(String country, int distance) {
+            this.country = country;
+            this.distance = distance;
+        }
     }
 
-    public List<String> findPath (String country1, String country2) {
-    	//dijkstra's algorithm
-    	//origin and destination get passed in
-    	//have empty priority queue
-    	//each element in prioitity queue will be hashmap
-    		//make hashmap of type string (full path), int (length of path)
-    		//string is path, int is int for whole path
-    		
+    public int getDistance(String country1, String country2) {
+        country1 = edgeCase(country1);
+        country2 = edgeCase(country2);
+
+        if (!borderCountries.containsKey(country1) || !borderCountries.containsKey(country2)) {
+            // Either country1 or country2 does not exist
+            return -1;
+        }
+
+        HashMap<String, Double> distances = borderCountries.get(country1);
+
+        if (distances == null || !distances.containsKey(country2)) {
+            // There is no direct land border between country1 and country2
+            return -1;
+        }
+
+        return distances.get(country2).intValue();
+    }
+
+    public List<String> findPath(String country1, String country2) {
+    	//handle edge cases for country names
+        country1 = edgeCase(country1);
+        country2 = edgeCase(country2);
+
+        // Dijkstra's algorithm to find the shortest path
+        PriorityQueue<Node> priorityQueue = new PriorityQueue<>(Comparator.comparingInt(node -> node.distance));
+        Set<String> visited = new HashSet<>();
+        Map<String, String> previous = new HashMap<>();
+        Map<String, Integer> distances = new HashMap<>();
+
+        //Add starting node to priority queue with 0 for distance
+        priorityQueue.add(new Node(country1, 0));
+
+        //Process nodes in priority queue until empty
+        while (!priorityQueue.isEmpty()) {
+        	//Get node with smallest distance from priority queue
+            Node current = priorityQueue.poll();
+            String currentCountry = current.country;
+
+            //Skip processing if node already visited
+            if (visited.contains(currentCountry)) {
+                continue;
+            }
+            
+            //marks current node as visited
+            visited.add(currentCountry);
+
+            if (currentCountry.equals(country2)) {
+                // Reconstruct the path
+                List<String> path = new ArrayList<>();
+                while (previous.containsKey(currentCountry)) {
+                    path.add(0, currentCountry + " --> " + previous.get(currentCountry) +
+                            " (" + distances.get(currentCountry) + " km.)");
+                    currentCountry = previous.get(currentCountry);
+                }
+                //returns path
+                return path;
+            }
+            
+            //Get neighbors of current node
+            HashMap<String, Double> neighbors = borderCountries.get(currentCountry);
+            
+            //Goes through each neighbor
+            if (neighbors != null) {
+                for (String neighbor : neighbors.keySet()) {
+                	//Skip processing if neighbor is already visited
+                    if (!visited.contains(neighbor)) {
+                    	//calculate new distance from starting node to neighbor
+                        int newDistance = distances.getOrDefault(currentCountry, 0) +
+                                neighbors.get(neighbor).intValue();
+                        
+                        //Updates distance and prev node if new distance is shorter
+                        if (!distances.containsKey(neighbor) || newDistance < distances.get(neighbor)) {
+                            distances.put(neighbor, newDistance);
+                            previous.put(neighbor, currentCountry);
+                            //Adds neighbor to priority queue with new distance
+                            priorityQueue.add(new Node(neighbor, newDistance));
+                        }
+                    }
+                }
+            }
+        }
 
         // No path found
-        return null;
+        return Collections.emptyList();
     }
     
     public String idCheck(String id) {
-    	if (id.equals("YEM")) {
-    		id = "YAR";
-    	}
-    	else if (id.equals("UKG")) {
-    		id = "UK";
-    	}
-    	return id;
+        // Additional cases may be added based on edge cases
+        if ("YEM".equals(id)) {
+            id = "YAR";
+        } else if ("UKG".equals(id)) {
+            id = "UK";
+        }
+        return id;
     }
     
     public String edgeCase(String name) {
@@ -163,10 +243,7 @@ public class IRoadTrip {
     
     public void acceptUserInput() throws FileNotFoundException {
     	Scanner scan = new Scanner(new File(files[0]));
-    	//reading borders.txt
-    	
-    	int c = 0;
-    	
+    	//reading borders.txt    	
     	while (scan.hasNextLine()) {
     		//reads line by line
     		String line = scan.nextLine();
@@ -178,7 +255,6 @@ public class IRoadTrip {
     			borderCountries.put(first[0], null);
     		}
     		else {
-    			//System.out.println(first[1]);
     			//has bordering countries
     			String[] second = first[1].split("; ");
     			//splits up each bordering country including its distance from main Country
@@ -188,10 +264,7 @@ public class IRoadTrip {
     				String secondTrim = second[i].trim().replaceAll(",", "");
     				//removes outside whitespace and deletes commas
     				secondTrim = secondTrim.substring(0, secondTrim.length() - 3);
-    				//removes " km" from each entry
-    				
-    				//System.out.println(secondTrim);
-    				
+    				//removes " km" from each entry   				
     				int digitI = 0;
     				for (int j = 0; j < secondTrim.length(); j++) {
     					//runs through country entry
@@ -205,33 +278,16 @@ public class IRoadTrip {
     				String thirdOne = secondTrim.substring(0, digitI);
     				//bordering country name
     				String thirdTwo = secondTrim.substring(digitI);
-    				
-    				//System.out.println(thirdOne);
-    				//System.out.println(thirdTwo);
     				//bordering country distance from main Country (double)
     				borderCountryDist.put(thirdOne, Double.parseDouble(thirdTwo));
     				//adds bordering countries into inner HashMap
-    			}
-    			c++;
-    			System.out.println(borderCountryDist + "    " + c + "  " + first[0]);
-    			
-    			//HashMap<String, Double> temp = borderCountryDist;
+    			}    			
     			borderCountries.put(first[0], borderCountryDist);
-    			//System.out.println(borderCountries + "   " + c + "   ");
-    			
-    			//System.out.println(borderCountries);
-    			//borderCountryDist.clear();
-    			System.out.println(borderCountries.get(first[0])+ " first[0]");
     			//adds main Country and a hashMap of its bordering countries with distance values
+    			borderCountryDist.clear();
     		}
     	}
     	scan.close();
-    	
-    	
-    	for (int l = 0; l < borderCountries.size(); l++) {
-    		//System.out.println()
-    	}
-    	//System.out.println(borderCountries);
     	//stops scanning borders.txt file
 
     	scan = new Scanner(new File(files[2]));
@@ -294,31 +350,18 @@ public class IRoadTrip {
     			else {
     				name = aliases[0];
     			}	
-    		//ACCOUNT FOR NULL CASES
     		}
     		if (skip == false) {
     			
     			name = edgeCase(name);
-    			
-    			//System.out.println(name);
     			borderCountryDist = borderCountries.get(name);
     			 //inner HashMap is set to find itself given the main Country in main HashMap
     			count++;
     			if (borderCountryDist != null) {
-    				//System.out.println(name);
-    				//System.out.println(borderCountries.get(name));
     				for (String key : borderCountryDist.keySet()) {
     					//looks at each country(key) in inner HashMap
     					String id = nametoId.get(key);
-    					
-    					if (id == null) {
-    						//System.out.println(key);
-    					}
-    					//System.out.println(id);
     					//takes country(key) and converts it to ID
-    					//account for edge cases
-    					//System.out.println(first[3] + " first at 3");
-    					
     					if (id == first[3]) {
     						
     						//if ID = destination in capdist file
@@ -331,14 +374,9 @@ public class IRoadTrip {
     						borderCountryDist.clear();
     						//change main HashMap accordingly
     					}
-    					else {
-    						//System.out.println(id);
-    					}
     				}
     			}
-    				//if main Country HAS bordering countries
     		}
-    		//if ID is same as ID in state_name file, IF NULL, NEED TO ACCOUNT FOR EDGE CASE
     	}
     	scan.close();
     }
@@ -350,58 +388,3 @@ public class IRoadTrip {
         a3.acceptUserInput();
     }
 }
-
-/*
-System.out.println("\nborderCountries HashMap:");
-for (Map.Entry<String, HashMap<String, Double>> entry : borderCountries.entrySet()) {
-    String country = entry.getKey();
-    HashMap<String, Double> distances = entry.getValue();
-
-    System.out.println("Country: " + country);
-    System.out.println("Distances: " + distances);
-    System.out.println();
-}
-*/
-// read state_name.tsv file
-	//make another hash map (id to fullname)
-	//string string USA to United States of America
-	//make another hash map (fullname to id)
-	//string string United States of America to USA
-	//reading each line of statename
-		//if end date = dec 31 2020, add to map
-		//else dont add to map
-	//split based on tabs
-	//
-// read capdist excel file
-	//split read each line base on commans
-	//get acronym for first country, (a)
-	//use one previous hash maps to get full name of given country
-	//check to see if that has an associated value (any bordering countries)
-	//if yes
-		//iterate over that hashmap
-		//get key , [i]th element, from the inside hashmap
-		//get id for the key
-		//check to see if id is in the destination part of capdist
-		//if match get distance number and convert to int
-		//will now overwrite the double value in Main hashmap, both the outer and inner just for the hit country
-
-//be sure names are matching between state name and border
-	//use ifs
-	//stay consistent with names
-	//need a way to go through name to acronym
-		//will use state_name to do this
-
-/*
-if (name == null) {
-	use countryKeys HashMap
-	
-	populate countryKeys checking state_name and capdist file
-		use country number to get every name and ID for each country
-		put these values in a list and add them to countryKeys 
-		countryKeys <name and IDs, main Country>
-		main Country = how country is spelled in main HashMap from borders.txt
-	
-	checks for different potential values for a country
-	if completed correctly, no name will be null at this stage
-}
-*/
